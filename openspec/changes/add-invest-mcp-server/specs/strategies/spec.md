@@ -5,7 +5,7 @@
 ## ADDED Requirements
 
 ### Requirement: run_strategy
-Сервер SHALL предоставлять инструмент run_strategy с параметром strategy: {id (необязателен, иначе генерируется), initial_actions (массив действий), rules (массив правил)}. Валидация перед запуском: ref уникален во всей стратегии; действия cancel_order, cancel_stop_order, replace_order ссылаются на существующий ref; place_order с order_type=limit требует price; place_stop_order с order_type=stop_limit требует price и stop_price; expiration_type=good_till_date требует expire_date; quantity больше нуля; instrument резолвится. При любой ошибке валидации сервер SHALL вернуть ошибку и не запускать стратегию. После валидации сервер SHALL запустить движок: выполнить initial_actions последовательно и вернуть strategy_id, статус и результаты первоначальных действий.
+Сервер SHALL предоставлять инструмент run_strategy с параметром strategy: {id (необязателен, иначе генерируется), initial_actions (массив действий), rules (массив правил)}. Валидация перед запуском: конфиг SHALL соответствовать JSON-схеме стратегии; ref уникален во всей стратегии; действия cancel_order, cancel_stop_order, replace_order ссылаются на существующий ref; place_order с order_type=limit требует price; place_stop_order с order_type=stop_limit требует price и stop_price; expiration_type=good_till_date требует expire_date; quantity больше нуля; instrument резолвится; цены и уровни кратны min_price_increment инструмента и согласованы с текущими рыночными ценами; уровень стоп-лосса SHALL NOT совпадать с уровнем тейк-профита. При любой ошибке валидации сервер SHALL вернуть ошибку и не запускать стратегию. После валидации сервер SHALL запустить движок: выполнить initial_actions последовательно и вернуть strategy_id, статус и результаты первоначальных действий.
 
 #### Scenario: Запуск с первичной лимитной заявкой
 - **WHEN** стратегия с initial_actions place_order limit валидна
@@ -17,6 +17,18 @@
 
 #### Scenario: Ссылка на несуществующий ref в cancel
 - **WHEN** правило содержит cancel_order c ref, которого нет ни в одной операции размещения
+- **THEN** run_strategy возвращает ошибку валидации
+
+#### Scenario: Несоответствие JSON-схеме
+- **WHEN** конфиг стратегии не проходит JSON-схему
+- **THEN** run_strategy возвращает ошибку валидации, стратегия не запускается
+
+#### Scenario: Цена не кратна шагу цены
+- **WHEN** цена лимитки не кратна min_price_increment инструмента
+- **THEN** run_strategy возвращает ошибку валидации
+
+#### Scenario: Совпадающие уровни стоп-лосса и тейк-профита
+- **WHEN** уровень стоп-лосса совпадает с уровнем тейк-профита
 - **THEN** run_strategy возвращает ошибку валидации
 
 ### Requirement: События и триггеры правил
